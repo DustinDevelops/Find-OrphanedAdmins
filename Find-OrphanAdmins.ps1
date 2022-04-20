@@ -11,7 +11,7 @@
 	.DESCRIPTION
 		A description of the file.
 #>
- 
+
 # $Script_Ver = "1.00"
 $ScriptInvocation = (Get-Variable MyInvocation -Scope Script).Value
 # $ScriptPath = $ScriptInvocation.MyCommand.Path
@@ -19,12 +19,20 @@ $ScriptInvocation = (Get-Variable MyInvocation -Scope Script).Value
 $ScriptName = $ScriptInvocation.MyCommand.Name
 $Src_Server = $env:computername
 $ScriptStart = (Get-Date)
-# $dt = $(get-date $ScriptStart -format yyyy-MM-dd)
+$dt = $(get-date $ScriptStart -format yyyy-MM-dd)
 $Admin = [Environment]::UserName
 $DomainFQDN = (Get-WmiObject Win32_ComputerSystem).Domain
 #$Forest = (Get-ADForest)
 $Domain = (Get-ADDomain $DomainFQDN)
 
+$LogFolder = "C:\scripts\OrphanAdmins"
+$LogFile = "$LogFolder\orphanadmins-$dt.txt"
+## Check if log folder exists
+$LogFolderTest = Test-Path $LogFolder
+if (!$LogFolderTest)
+{
+  New-Item -Path $LogFolder -ItemType Directory
+}
 # EMAIL SETTINGS UNCOMMENT AND FILL OUT
 #$SMTPServer = ""
 #$SMTPFrom = ""
@@ -44,7 +52,7 @@ if(-not(Get-Module -name $name))
     }
     else
     {
-      Write-Host ActiveDirectory PowerShell Module Not Available -ForegroundColor Red
+      Write-Output "$dt - ERROR   ActiveDirectory PowerShell Module Not Available" | Out-File -FilePath $LogFile -Append
     }
   } # end if not module
   else
@@ -103,8 +111,9 @@ Else
   #Clear AdminCount Attribute and set inheritance
   ForEach ($Orphan in $OrphanUsers.Keys)
   {
-    if ($orphan -ne "krbtgt"){
+    if ($orphan -ne "krbtgt" -or "administrator"){
     $Orphan
+    $Orphan | Out-File -FilePath $LogFile -Append
     $ADUser = Get-ADUser $Orphan
     Set-ADUser $Orphan -Clear {AdminCount}
     Set-Inheritance $ADUser
