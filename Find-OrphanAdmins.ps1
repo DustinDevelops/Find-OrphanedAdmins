@@ -1,4 +1,4 @@
-<#	
+﻿<#	
 	.NOTES
 	===========================================================================
 	 Created with: 	VS Code
@@ -26,7 +26,7 @@ $DomainFQDN = (Get-WmiObject Win32_ComputerSystem).Domain
 $Domain = (Get-ADDomain $DomainFQDN)
 
 $LogFolder = "C:\scripts\OrphanAdmins"
-$LogFile = "$LogFolder\orphanadmins-$dt.txt"
+$LogFile = "$LogFolder\orphanadmins.txt"
 ## Check if log folder exists
 $LogFolderTest = Test-Path $LogFolder
 if (!$LogFolderTest)
@@ -80,7 +80,7 @@ $Acl = Get-ACL -path "AD:\$ObjectPath"
 $ProtectedGroups = Get-ADGroup -LDAPFilter "(adminCount=1)"
  
 #Get List of Admin Users (Past and Present)
-$ProtectedUsers = (Get-ADUser -LDAPFilter "(adminCount=1)").samaccountname
+$ProtectedUsers = (get-aduser -Filter "admincount -eq 1 -and name -ne 'krbtgt' -and name -ne 'administrator'").samaccountname
  
 $CurrentAdmins = ForEach ($ProtectedGroup in $ProtectedGroups) {(Get-ADGroupMember $ProtectedGroup | Where-Object {$_.ObjectClass -eq "User"}).samaccountname}
  
@@ -104,20 +104,20 @@ If ($CurrentAdmins -contains $ProtectedUser)
  
 If ($OrphanUsers.Keys.Count.Equals(0))
 {
-  $True | Out-Null
+  write-output "$scriptstart - No Orphaned Admins Found" | out-file -filepath $logfile -append
 }
 Else
 {
   #Clear AdminCount Attribute and set inheritance
   ForEach ($Orphan in $OrphanUsers.Keys)
   {
-    if ($orphan -ne "krbtgt" -or "administrator"){
     $Orphan
-    $Orphan | Out-File -FilePath $LogFile -Append
+    $append = "$scriptstart - $orphan"
+    $append | Out-File -FilePath $LogFile -Append
     $ADUser = Get-ADUser $Orphan
     Set-ADUser $Orphan -Clear {AdminCount}
     Set-Inheritance $ADUser
-    }
+    
   }
 }
 
